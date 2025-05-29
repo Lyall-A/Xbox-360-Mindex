@@ -1,0 +1,1 @@
+ffmpeg -i "./test_audio" -c:a wmav2 -b:a 192k -ar 44100 -compression_level 0 "./test_audio.wma"
