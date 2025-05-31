@@ -1,0 +1,17 @@
+{
+    "albumTitle": "Album",
+    "artistTitle": "Artist",
+    "genreTitle": "Genre",
+    "titleFormat": "{artist} - {title}",
+    "ffmpegPath": "ffmpeg",
+    "tracksPath": "songs",
+    "mindexOutput": "mindex",
+    "supportedFormats": [
+        "wma",
+        "mp3",
+        "wav",
+        "flac",
+        "ogg"
+    ],
+    "pipeOutput": false
+}

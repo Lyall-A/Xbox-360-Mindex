@@ -1,1 +1,0 @@
-mindex.xmi files to help reverse engineering
