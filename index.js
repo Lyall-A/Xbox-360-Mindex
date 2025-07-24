@@ -1,85 +1,88 @@
 const fs = require("fs");
 const path = require("path");
-const cp = require("child_process");
 
 const createMindexBuffer = require("./utils/createMindexBuffer");
 const createFmimBuffer = require("./utils/createFmimBuffer");
+const createTrack = require("./utils/createTrack");
+const getFiles = require("./utils/getFiles");
 
 const config = require("./config.json");
 
-const tracks = fs.readdirSync(config.tracksPath).filter(file => !fs.statSync(path.join(config.tracksPath, file)).isDirectory()).map(file => ({ path: path.resolve(config.tracksPath, file) }));
-// const tracks = fs.readdirSync(tracksPath).filter(file => supportedFormats.includes(path.extname(file).toLowerCase().substring(1))).map(file => ({ path: path.resolve(config.tracksPath, file) }));
+const tracks = [];
+const trackPaths = getFiles(config.tracksPath)
+    .filter(file => !config.supportedFormats?.length || config.supportedFormats.includes(path.extname(file).toLowerCase().substring(1)));
+const allTracks = (config.trackInfoPath && fs.existsSync(config.trackInfoPath)) ? JSON.parse(fs.readFileSync(config.trackInfoPath)) : [];
 
-const fmimPath = path.join(config.mindexOutput, "media/0000");
-if (fs.existsSync(config.mindexOutput)) fs.renameSync(config.mindexOutput, `${config.mindexOutput}_${Date.now()}`);
-if (!fs.existsSync(fmimPath)) fs.mkdirSync(fmimPath, { recursive: true });
+(async () => {
+    // Create WMA's/tracks
+    for (let trackIndex = 0; trackIndex < trackPaths.length; trackIndex++) {
+        const trackPath = trackPaths[trackIndex];
 
-(function convertTrack(trackIndex) {
-    const track = tracks[trackIndex];
-    const wmaPath = path.join(config.tracksPath, `temp/${path.basename(track.path, path.extname(track.path))}.wma`);
-    if (!fs.existsSync(path.dirname(wmaPath))) fs.mkdirSync(path.dirname(wmaPath), { recursive: true });
-    
-    console.log(`Converting track ${trackIndex + 1} of ${tracks.length} (${path.basename(track.path)})...`);
+        const foundTrack = allTracks.find(track => track.trackPath === trackPath);
+        if (!foundTrack?.wmaPath || !fs.existsSync(foundTrack.wmaPath)) {
+            // Create track
+            const wmaPath = path.join(config.wmaOutputPath, `${path.basename(trackPath, path.extname(trackPath))}.wma`);
+            if (!fs.existsSync(path.dirname(wmaPath))) fs.mkdirSync(path.dirname(wmaPath), { recursive: true });
+            
+            console.log(`Converting track ${trackIndex + 1} of ${trackPaths.length} to WMA... (${path.basename(trackPath)})`);
+            
+            const track = await createTrack(trackPath, wmaPath);
 
-    const ffmpegProcess = cp.spawn(config.ffmpegPath, [
-        "-i", track.path,
-        "-c:a", "wmav2",
-        "-b:a", "192k",
-        "-ar", "44100",
-        "-compression_level", "0",
-        "-ac", "2",
-        "-vn",
-        ...(config.pipeOutput ? [
-            // Output to pipe (doesn't work)
-            "-f", "asf",
-            "-"
-        ] : [
-            // Output as file
-            "-y",
-            wmaPath
-        ]),
-    ]);
-
-    const ffmpegOutputBufferArray = [];
-    const wmaBufferArray = [];
-
-    ffmpegProcess.stderr.on("data", data => ffmpegOutputBufferArray.push(...data));
-    ffmpegProcess.stdout.on("data", data => wmaBufferArray.push(...data));
-
-    ffmpegProcess.on("exit", exitCode => {
-        const ffmpegOutput = Buffer.from(ffmpegOutputBufferArray).toString();
-        const wmaBuffer = Buffer.from(wmaBufferArray);
-
-        const durationMatch = ffmpegOutput.match(/duration: ([\d.]+):([\d.]+):([\d.]+)/i);
-
-        if (exitCode !== 0) {
-            if (!config.pipeOutput) fs.rmSync(wmaPath);
-            return console.log(`Failed to convert track! FFmpeg log:\n${ffmpegOutput}`);
-        }
-
-        if (!durationMatch) {
-            if (!config.pipeOutput) fs.rmSync(wmaPath);
-            return console.log("Failed to get track duration!");
-        }
-
-        track.title = ffmpegOutput.match(/(?<=title           : ).*/i)?.[0] || config.defaultTitle || path.basename(track.path, path.extname(track.path));
-        track.artist = ffmpegOutput.match(/(?<=artist          : ).*/i)?.[0] || config.defaultArtist;
-        track.album = ffmpegOutput.match(/(?<=album           : ).*/i)?.[0] || config.defaultAlbum;
-        track.genre = ffmpegOutput.match(/(?<=genre           : ).*/i)?.[0] || config.defaultGenre;
-        track.track = parseInt(ffmpegOutput.match(/(?<=track           : ).*/i)?.[0]) || 1;
-        track.length = parseFloat(durationMatch[1]) * 3600000 + parseFloat(durationMatch[2]) * 60000 + parseFloat(durationMatch[3]) * 1000;
-        track.formattedTitle = config.titleFormat.replace(/{title}/g, track.title || "").replace(/{artist}/g, track.artist || "").replace(/{album}/g, track.album || "").replace(/{genre}/g, track.genre || "").replace(/{track}/g, track.track || "");
-
-        const fmimBuffer = createFmimBuffer(config.pipeOutput ? wmaBuffer : fs.readFileSync(wmaPath), track);
-        fs.writeFileSync(path.join(fmimPath, (!trackIndex ? 8 : 10 + trackIndex).toString(16).padStart(4, "0").toUpperCase()), fmimBuffer);
-        if (!config.pipeOutput) fs.rmSync(wmaPath);
-
-        if (tracks[++trackIndex]) {
-            return convertTrack(trackIndex);
+            tracks.push(track);
+            allTracks.push(track);
         } else {
-            console.log(`Generating mindex.xmi file...`);
-            const mindexBuffer = createMindexBuffer(config.albumTitle, config.artistTitle, config.genreTitle, tracks);
-            fs.writeFileSync(path.join(config.mindexOutput, "mindex.xmi"), mindexBuffer);
+            // Track already exists
+            tracks.push(foundTrack);
+        };
+    };
+
+    // All tracks getting converted
+    const includedTracks = [...(config.includeOldTracks ? allTracks.filter(track => track?.wmaPath && fs.existsSync(track.wmaPath)) : tracks)].sort((a, b) => {
+        // Sort tracks
+        if (config.sortType === "title") {
+            if (config.sortDirection === "desc") return b.title.localeCompare(a.title);
+            return a.title.localeCompare(b.title);
+        } else
+        if (config.sortType === "artist") {
+            if (config.sortDirection === "desc") return b.artist.localeCompare(a.artist);
+            return a.artist.localeCompare(b.artist);
+        } else
+        if (config.sortType === "album") {
+            if (config.sortDirection === "desc") return b.album.localeCompare(a.album);
+            return a.album.localeCompare(b.album);
         }
     });
-})(0);
+
+    // Create mindex directory
+    const fmimPath = path.join(config.mindexOutputPath, "media/0000");
+    if (fs.existsSync(config.mindexOutputPath)) fs.renameSync(config.mindexOutputPath, `${path.basename(config.mindexOutputPath)}_${Date.now()}`); // Move existing mindex directory
+    if (!fs.existsSync(fmimPath)) fs.mkdirSync(fmimPath, { recursive: true });
+
+    // Create FMIM's
+    for (let trackIndex = 0; trackIndex < includedTracks.length; trackIndex++) {
+        const track = includedTracks[trackIndex];
+
+        console.log(`Converting track ${trackIndex + 1} of ${includedTracks.length} to FMIM... (${track.title} - ${track.album} - ${track.artist})`);
+
+        // Create FMIM
+        const fmimBuffer = createFmimBuffer(fs.readFileSync(track.wmaPath), track);
+        fs.writeFileSync(path.join(fmimPath, (trackIndex === 0 ? 8 : 10 + trackIndex).toString(16).padStart(4, "0").toUpperCase()), fmimBuffer);
+
+        if (!config.keepWma) {
+            // Delete WMA after FMIM created
+            fs.rmSync(track.wmaPath);
+            track.wmaPath = null;
+        };
+    }
+
+    // Create mindex.xmi
+    console.log(`Creating mindex.xmi file...`);
+    const mindexBuffer = createMindexBuffer(config.albumTitle, config.artistTitle, config.genreTitle, includedTracks);
+    fs.writeFileSync(path.join(config.mindexOutputPath, "mindex.xmi"), mindexBuffer);
+
+    if (config.trackInfoPath) {
+        // Create tracks info file
+        console.log("Generating track info file...");
+        fs.writeFileSync(config.trackInfoPath, JSON.stringify(allTracks));
+    }
+})();

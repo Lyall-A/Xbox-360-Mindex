@@ -8,14 +8,14 @@ function createMindexBuffer(albumTitle, artistTitle, genreTitle, tracks) {
 
     Buffer.from(mindexBufferArray).copy(mindexBuffer, 0);
 
-    mindexBuffer.writeUInt32LE(7 + tracks.length, 1219);
-    mindexBuffer.writeUInt32LE(tracks.length, 1227);
-    mindexBuffer.writeUInt32LE(9 + tracks.length, 4299);
-    mindexBuffer.writeUInt32LE(tracks.length, 3407);
-    mindexBuffer.writeUInt32LE(7 + tracks.length, 5499);
-    mindexBuffer.writeUInt32LE(tracks.length, 5507);
-    mindexBuffer.writeUInt32LE(7 + tracks.length, 6099);
-    mindexBuffer.writeUInt32LE(tracks.length, 6107);
+    mindexBuffer.writeUInt8((7 + tracks.length) % 256, 1216);
+    mindexBuffer.writeUInt32BE(tracks.length, 1224);
+    mindexBuffer.writeUInt8((9 + tracks.length) % 256, 4296);
+    mindexBuffer.writeUInt32BE(tracks.length, 3404);
+    mindexBuffer.writeUInt8((7 + tracks.length) % 256, 5496);
+    mindexBuffer.writeUInt32BE(tracks.length, 5504);
+    mindexBuffer.writeUInt8((7 + tracks.length) % 256, 6096);
+    mindexBuffer.writeUInt32BE(tracks.length, 6104);
 
     const albumBuffer = Buffer.alloc(82);
     albumBuffer.write(albumTitle, "utf-16le");
@@ -39,16 +39,16 @@ function createMindexBuffer(albumTitle, artistTitle, genreTitle, tracks) {
         const trackBuffer = Buffer.from(trackBufferArray);
 
         // what the fuck is this shit
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x02 : trackNum === tracks.length ? 0x08 : 8 + trackNum, 7);
-        trackBuffer.writeUInt32LE(trackNum !== 1 && trackNum === tracks.length ? 0x02 : 10 + trackNum, 11);
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x07 : 8 + trackNum, 99);
-        trackBuffer.writeUInt32LE(trackNum !== 1 && trackNum === tracks.length ? 0x07 : 10 + trackNum, 103);
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x09 : trackNum === tracks.length ? 0x08 : 7 + trackNum, 111);
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x0B : trackNum === tracks.length ? 0x09 : 11 + trackNum, 115);
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x0A : trackNum === tracks.length ? 0x08 : 8 + trackNum, 123);
-        trackBuffer.writeUInt32LE(trackNum === 1 ? 0x0B : trackNum === tracks.length ? 0x0B : 10 + trackNum, 127);
-        trackBuffer.writeUIntBE(track.length * 2, 144, 3); // TODO: track length might be multiplied by channels rather than just 2
-        trackBuffer.writeUInt32LE(1 + 4 * trackNum, 147);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x02 : trackNum === tracks.length ? 0x08 : 0x08 + trackNum, 4);
+        trackBuffer.writeUInt32BE(trackNum !== 1 && trackNum === tracks.length ? 0x02 : 0x0A + trackNum, 8);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x07 : 0x08 + trackNum, 96);
+        trackBuffer.writeUInt8(trackNum !== 1 && trackNum === tracks.length ? 0x07 : (0x0A + trackNum) % 256, 100);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x09 : trackNum === tracks.length ? 0x08 : 0x07 + trackNum, 108);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x0B : trackNum === tracks.length ? 0x09 : 0x0B + trackNum, 112);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x0A : trackNum === tracks.length ? 0x08 : 0x08 + trackNum, 120);
+        trackBuffer.writeUInt32BE(trackNum === 1 ? 0x0B : trackNum === tracks.length ? 0x0B : 0x0A + trackNum, 124);
+        trackBuffer.writeUIntBE(track.length * 2, 144, 3);
+        trackBuffer.writeUInt8((1 + 4 * trackNum) % 256, 147);
 
         const titleBuffer = Buffer.alloc(82);
         titleBuffer.write(track.formattedTitle || track.title, "utf-16le");
@@ -56,6 +56,6 @@ function createMindexBuffer(albumTitle, artistTitle, genreTitle, tracks) {
 
         return trackBuffer;
     }
-}
+};
 
 module.exports = createMindexBuffer;

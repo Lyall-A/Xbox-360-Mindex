@@ -7,15 +7,23 @@
     "defaultAlbum": "Unknown Album",
     "defaultArtist": "Unknown Artist",
     "defaultGenre": "Unknown Genre",
-    "ffmpegPath": "ffmpeg",
-    "tracksPath": "songs",
-    "mindexOutput": "mindex",
+    "sortType": "album",
+    "sortDirection": "asc",
+    "includeOldTracks": true,
+    "keepWma": true,
     "supportedFormats": [
         "wma",
         "mp3",
         "wav",
         "flac",
-        "ogg"
+        "ogg",
+        "aac",
+        "opus"
     ],
-    "pipeOutput": false
+
+    "ffmpegPath": "ffmpeg",
+    "tracksPath": "tracks",
+    "trackInfoPath": "tracks.json",
+    "wmaOutputPath": "wma_tracks",
+    "mindexOutputPath": "mindex"
 }
