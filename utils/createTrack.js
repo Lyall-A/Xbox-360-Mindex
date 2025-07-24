@@ -10,8 +10,8 @@ function createTrack(trackPath, wmaPath) {
             "-c:a", "wmav2",
             "-b:a", "192k",
             "-ar", "44100",
-            "-compression_level", "0",
             "-ac", "2",
+            "-map_metadata", "-1",
             "-vn",
             "-y",
             wmaPath
@@ -29,8 +29,9 @@ function createTrack(trackPath, wmaPath) {
             const durationMatch = ffmpegOutput.match(/duration: ([\d.]+):([\d.]+):([\d.]+)/i);
 
             const track = {
-                trackPath: trackPath,
-                wmaPath: wmaPath,
+                trackPath,
+                wmaPath,
+                created: Date.now(),
                 title: ffmpegOutput.match(/(?<=title           : ).*/i)?.[0] || config.defaultTitle || path.basename(trackPath, path.extname(trackPath)),
                 artist: ffmpegOutput.match(/(?<=artist          : ).*/i)?.[0] || config.defaultArtist,
                 album: ffmpegOutput.match(/(?<=album           : ).*/i)?.[0] || config.defaultAlbum,

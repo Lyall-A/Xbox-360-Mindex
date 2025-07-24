@@ -18,7 +18,8 @@ const allTracks = (config.trackInfoPath && fs.existsSync(config.trackInfoPath)) 
     for (let trackIndex = 0; trackIndex < trackPaths.length; trackIndex++) {
         const trackPath = trackPaths[trackIndex];
 
-        const foundTrack = allTracks.find(track => track.trackPath === trackPath);
+        const foundTrackIndex = allTracks.findIndex(track => track.trackPath === trackPath);
+        const foundTrack = allTracks[foundTrackIndex];
         if (!foundTrack?.wmaPath || !fs.existsSync(foundTrack.wmaPath)) {
             // Create track
             const wmaPath = path.join(config.wmaOutputPath, `${path.basename(trackPath, path.extname(trackPath))}.wma`);
@@ -27,7 +28,8 @@ const allTracks = (config.trackInfoPath && fs.existsSync(config.trackInfoPath)) 
             console.log(`Converting track ${trackIndex + 1} of ${trackPaths.length} to WMA... (${path.basename(trackPath)})`);
             
             const track = await createTrack(trackPath, wmaPath);
-
+            
+            if (foundTrack) allTracks.splice(foundTrackIndex, 1);
             tracks.push(track);
             allTracks.push(track);
         } else {
@@ -39,23 +41,24 @@ const allTracks = (config.trackInfoPath && fs.existsSync(config.trackInfoPath)) 
     // All tracks getting converted
     const includedTracks = [...(config.includeOldTracks ? allTracks.filter(track => track?.wmaPath && fs.existsSync(track.wmaPath)) : tracks)].sort((a, b) => {
         // Sort tracks
-        if (config.sortType === "title") {
-            if (config.sortDirection === "desc") return b.title.localeCompare(a.title);
-            return a.title.localeCompare(b.title);
-        } else
-        if (config.sortType === "artist") {
-            if (config.sortDirection === "desc") return b.artist.localeCompare(a.artist);
-            return a.artist.localeCompare(b.artist);
-        } else
-        if (config.sortType === "album") {
-            if (config.sortDirection === "desc") return b.album.localeCompare(a.album);
-            return a.album.localeCompare(b.album);
-        }
+        const sortType = config.sortType?.toLowerCase();
+        const sortDirection = config.sortDirection?.toLowerCase().startsWith("des") ? -1 : 1;
+
+        if (sortType === "title") return a.title.localeCompare(b.title) * sortDirection; else
+        if (sortType === "artist") return a.artist.localeCompare(b.artist) * sortDirection; else
+        if (sortType === "album") return a.album.localeCompare(b.album) * sortDirection; else
+        if (sortType === "date") return (a.created - b.created) * sortDirection;
     });
 
     // Create mindex directory
     const fmimPath = path.join(config.mindexOutputPath, "media/0000");
-    if (fs.existsSync(config.mindexOutputPath)) fs.renameSync(config.mindexOutputPath, `${path.basename(config.mindexOutputPath)}_${Date.now()}`); // Move existing mindex directory
+    if (fs.existsSync(config.mindexOutputPath)) {
+        if (config.backupMindex) {
+            fs.renameSync(config.mindexOutputPath, `${path.basename(config.mindexOutputPath)}_${Date.now()}`); // Move existing mindex directory
+        } else {
+            fs.rmSync(config.mindexOutputPath, { recursive: true, force: true });
+        }
+    }
     if (!fs.existsSync(fmimPath)) fs.mkdirSync(fmimPath, { recursive: true });
 
     // Create FMIM's

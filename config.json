@@ -7,10 +7,11 @@
     "defaultAlbum": "Unknown Album",
     "defaultArtist": "Unknown Artist",
     "defaultGenre": "Unknown Genre",
-    "sortType": "album",
-    "sortDirection": "asc",
+    "sortType": "date",
+    "sortDirection": "ascending",
     "includeOldTracks": true,
     "keepWma": true,
+    "backupMindex": true,
     "supportedFormats": [
         "wma",
         "mp3",
