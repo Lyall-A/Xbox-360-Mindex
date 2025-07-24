@@ -1,16 +1,17 @@
 const { fmimBufferArray } = require("./constants");
+const createUTF16BEBuffer = require("./createUTF16BEBuffer");
 
 function createFmimBuffer(wmaBuffer, track) {
     const fmimBuffer = Buffer.alloc(3336 + wmaBuffer.byteLength);
 
     Buffer.from(fmimBufferArray).copy(fmimBuffer, 0);
     
-    fmimBuffer.write((track?.title || "").substring(0, 200), 12, "utf-16le"); // Track
-    fmimBuffer.write((track?.album || "").substring(0, 200), 524, "utf-16le"); // Album
-    fmimBuffer.write((track?.artist || "").substring(0, 200), 1036, "utf-16le"); // Artist
-    fmimBuffer.write((track?.artist || "").substring(0, 200), 1548, "utf-16le"); // Artist (?)
-    fmimBuffer.write((track?.genre || "").substring(0, 200), 2060, "utf-16le"); // Genre
-    fmimBuffer.write((track?.genre || "").substring(0, 200), 2572, "utf-16le"); // Genre (?)
+    createUTF16BEBuffer(track?.title || "", 200).copy(fmimBuffer, 12); // Title
+    createUTF16BEBuffer(track?.album || "", 200).copy(fmimBuffer, 12); // Album
+    createUTF16BEBuffer(track?.artist || "", 200).copy(fmimBuffer, 12); // Artist
+    createUTF16BEBuffer(track?.artist || "", 200).copy(fmimBuffer, 12); // Artist (?)
+    createUTF16BEBuffer(track?.genre || "", 200).copy(fmimBuffer, 12); // Genre
+    createUTF16BEBuffer(track?.genre || "", 200).copy(fmimBuffer, 12); // Genre (?)
     fmimBuffer.writeUInt32BE(track?.length, 3080); // Track length (ms)
     fmimBuffer.writeUInt32BE(track?.track, 3084); // Track number (starts from 1)
 

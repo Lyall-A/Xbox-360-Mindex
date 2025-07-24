@@ -3357,8 +3357,8 @@ const trackBufferArray = [
     0x00,
     0x00,
     0x02,
+    0x00, // Start of track title - UTF-16, assumed BE and 78 bytes
     0x00,
-    0x00, // Start of track title - UTF-16 LE, assumed 82 bytes
     0x00,
     0x00,
     0x00,
@@ -3434,12 +3434,12 @@ const trackBufferArray = [
     0x00,
     0x00,
     0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
     0x00, // End of track title?
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
     0x00, // 0x07 on first track, counts up from 0x0A after - ~~assumed 32-bit LE~~ assumed 8-bit
     0x00, // 0x0B on first track, counts up from 0x0C after, 0x07 on last track - assumed 32-bit BE
     0x00,
@@ -8160,8 +8160,8 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x03,
+    0x00, // Start of album title - UTF-16, assumed BE and 78 bytes
     0x00,
-    0x00, // Start of album title - UTF-16 LE, assumed 82 bytes
     0x00,
     0x00,
     0x00,
@@ -8237,12 +8237,12 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x00,
+    0x00, // End of track title?
     0x00,
     0x00,
     0x00,
     0x00,
     0x00,
-    0x00, // End of album title?
     0x00, // 9 + amount of tracks - ~~assumed 32-bit LE~~ assumed 8-bit
     0x00,
     0x00,
@@ -9360,8 +9360,8 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x04,
+    0x00, // Start of artist title - UTF-16, assumed BE and 78 bytes
     0x00,
-    0x00, // Start of artist title - UTF-16 LE, assumed 82 bytes
     0x00,
     0x00,
     0x00,
@@ -9437,12 +9437,12 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x00,
+    0x00, // End of track title?
     0x00,
     0x00,
     0x00,
     0x00,
     0x00,
-    0x00, // End of artist title?
     0x00, // 7 + amount of tracks - ~~assumed 32-bit LE~~ assumed 8-bit
     0x00,
     0x00,
@@ -9960,12 +9960,7 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x05,
-    0x00,
-    0x00, // Start of genre title - UTF-16 LE, assumed 82 bytes
-    0x00,
-    0x00,
-    0x00,
-    0x00,
+    0x00, // Start of genre title - UTF-16, assumed BE and 78 bytes
     0x00,
     0x00,
     0x00,
@@ -10043,6 +10038,11 @@ const mindexBufferArray = [
     0x00,
     0x00,
     0x00, // End of genre title?
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
     0x00, // 7 + amount of tracks - ~~assumed 32-bit LE~~ assumed 8-bit
     0x00,
     0x00,
