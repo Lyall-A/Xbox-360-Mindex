@@ -1,8 +1,8 @@
 songs
 tracks
-
 wma_tracks
-
 mindex*
-
 tracks.json
+manifest.json
+node_modules
+dist
