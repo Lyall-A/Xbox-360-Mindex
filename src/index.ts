@@ -54,10 +54,10 @@ const manifest: {
 
     // create mindex
     for (const { trackPath, wmaPath, metadata } of manifest) {
-        const trackName = metadata.title ?? config.defaultTitle ?? path.basename(trackPath, path.extname(trackPath));
-        const albumName = metadata.album ?? config.defaultAlbum ?? 'Unknown Album';
-        const artistName = metadata.artist ?? config.defaultArtist ?? 'Unknown Artist';
-        const genreName = metadata.genre ?? config.defaultGenre ?? 'Unknown Genre';
+        const trackName = normalizeName(metadata.title ?? config.defaultTrack ?? path.basename(trackPath, path.extname(trackPath)));
+        const albumName = normalizeName(metadata.album ?? config.defaultAlbum ?? 'Unknown Album');
+        const artistName = normalizeName(metadata.artist ?? config.defaultArtist ?? 'Unknown Artist', config.genreSeperators, config.genreJoin, config.useFirstGenre);
+        const genreName = normalizeName(metadata.genre ?? config.defaultGenre ?? 'Unknown Genre', config.genreSeperators, config.genreJoin, config.useFirstGenre);
 
         const album = getAlbum(albumName, artistName, genreName);
         const artist = getArtist(artistName);
@@ -81,6 +81,16 @@ const manifest: {
 
     console.log('Writing manifest file...');
     fs.writeFileSync(config.manifestOutputPath, JSON.stringify(manifest)); // write manifest
+
+    function normalizeName(name: string, seperators?: string[], join?: string, useFirst?: boolean) {
+        if (seperators?.length) {
+            for (const seperator of seperators) {
+                const split = name.split(seperator)
+                name = useFirst ? split[0] : split.join(join ?? seperator);
+            }
+        }
+        return name;
+    }
 
     function getAlbum(albumName: string, artistName: string, genreName: string) {
         const album = albums.find(album => album.name === albumName);

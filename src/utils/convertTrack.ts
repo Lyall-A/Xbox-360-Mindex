@@ -7,6 +7,7 @@ export type TrackMetadata = {
     artist?: string;
     album?: string;
     genre?: string;
+    trackCount?: number;
     trackNum?: number;
     length: number;
 };
@@ -38,15 +39,10 @@ export default function convertTrack(trackPath: string, wmaPath: string): Promis
                 artist: ffmpegOutput.match(/(?<=artist          : ).*/i)?.[0],
                 album: ffmpegOutput.match(/(?<=album           : ).*/i)?.[0],
                 genre: ffmpegOutput.match(/(?<=genre           : ).*/i)?.[0],
+                trackCount: Number(ffmpegOutput.match(/(?<=tracktotal      : ).*/i)?.[0]),
                 trackNum: Number(ffmpegOutput.match(/(?<=track           : ).*/i)?.[0]),
                 length: Number(durationMatch[1]) * 3600000 + Number(durationMatch[2]) * 60000 + Number(durationMatch[3]) * 1000
             };
-            // track.formattedTitle = config.titleFormat
-            //         .replace(/{title}/g, track.title || '')
-            //         .replace(/{artist}/g, track.artist || '')
-            //         .replace(/{album}/g, track.album || '')
-            //         .replace(/{genre}/g, track.genre || '')
-            //         .replace(/{track}/g, track.track || '');
 
             return resolve(trackMetadata);
         });
