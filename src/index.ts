@@ -64,7 +64,7 @@ const manifest: {
         const genre = getGenre(genreName);
 
         console.log(`Creating track '${trackName}'...`);
-        const track = mindex.createTrack(trackName, metadata.length, tracks.filter(track => track.album === album).length + 1, album, artist, genre);
+        const track = mindex.createTrack(trackName, metadata.length, album, artist, genre, metadata.trackNum);
         const fmimBuffer = new FMIM(track, fs.readFileSync(wmaPath)); // create FMIM
 
         // write FMIM file
