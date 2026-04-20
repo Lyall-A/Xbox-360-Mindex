@@ -1,10 +1,16 @@
 {
-    "defaultTitle": null,
+    "defaultTrack": null,
     "defaultAlbum": "Unknown Album",
     "defaultArtist": "Unknown Artist",
     "defaultGenre": "Unknown Genre",
-    "keepWma": true,
-    "backupExistingMindex": true,
+
+    "artistSeperators": [";"],
+    "genreSeperators": [";"],
+    "artistJoin": ", ",
+    "genreJoin": ", ",
+    "useFirstArtist": true,
+    "useFirstGenre": true,
+    
     "extensions": [
         ".wma",
         ".mp3",
@@ -16,7 +22,8 @@
     ],
     "ffmpegPath": "ffmpeg",
     "tracksPath": "tracks",
-    "manifestOutputPath": "manifest.json",
     "wmaOutputPath": "wma_tracks",
+    "manifestOutputPath": "manifest.json",
+    "backupExistingMindex": true,
     "mindexOutputPath": "mindex"
 }
