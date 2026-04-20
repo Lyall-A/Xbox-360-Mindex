@@ -29,13 +29,13 @@ export class Chunk extends Buffer {
 
 export default class Mindex {
     chunks: ((
-        { type: ChunkType.PLACEHOLDER; value?: null; } |
+        { type: ChunkType.PLACEHOLDER; value: void; } |
         { type: ChunkType.TRACK; value: Track; } |
         { type: ChunkType.ALBUM; value: Album; } |
         { type: ChunkType.ARTIST; value: Artist; } |
         { type: ChunkType.GENRE; value: Genre; } |
         { type: ChunkType.PLAYLIST; value: Playlist; } |
-        { type: ChunkType.HEADER; value?: null; } |
+        { type: ChunkType.HEADER; value: void; } |
         { type: ChunkType.CHUNK_HEADER; value: ChunkHeader; } |
         { type: ChunkType.PLAYLIST_ENTRY; value: PlaylistEntry; }
     ) & {
