@@ -5,7 +5,6 @@ export type Track = {
     album: Album;
     artist: Artist;
     genre: Genre;
-    playlist?: Playlist;
 };
 
 export type Album = {
@@ -25,3 +24,8 @@ export type Genre = {
 export type Playlist = {
     name: string;
 };
+
+export type PlaylistEntry = {
+    playlist: Playlist;
+    track: Track;
+}
