@@ -52,13 +52,8 @@ export default class Mindex {
         this.createChunkHeader(ChunkType.PLAYLIST);
     }
 
-    createHeader() {
-        this.addChunk(ChunkType.HEADER);
-        return;
-    }
-
-    createChunkHeader(relatedChunkType: ChunkHeader) {
-        this.addChunk(ChunkType.CHUNK_HEADER, relatedChunkType);
+    createPlaceholder() {
+        this.addChunk(ChunkType.PLACEHOLDER);
         return;
     }
 
@@ -98,6 +93,16 @@ export default class Mindex {
         const playlist: Playlist = { name };
         this.addChunk(ChunkType.PLAYLIST, playlist);
         return playlist;
+    }
+
+    createHeader() {
+        this.addChunk(ChunkType.HEADER);
+        return;
+    }
+
+    createChunkHeader(relatedChunkType: ChunkHeader) {
+        this.addChunk(ChunkType.CHUNK_HEADER, relatedChunkType);
+        return;
     }
 
     createPlaylistEntry(track: Track, playlist: Playlist) {
@@ -155,6 +160,143 @@ export default class Mindex {
         };
     }
 
+    createPlaceholderChunk(index: number) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLACEHOLDER, index, ChunkType.PLACEHOLDER);
+
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous placeholder or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next placeholder or chunk type if last
+        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x0C); // Chunk type
+        return chunk;
+    }
+
+    createTrackChunk(index: number, track: Track) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.TRACK, index, ChunkType.TRACK);
+
+        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.track === track, -1);
+
+        const albumIndex = this.findChunkIndex(track.album);
+        const artistIndex = this.findChunkIndex(track.artist);
+        const genreIndex = this.findChunkIndex(track.genre);
+
+        const { previousIndex: previousIndexAlbum, nextIndex: nextIndexAlbum } = this.findClosestChunks(ChunkType.TRACK, index, albumIndex, ({ album }: Track) => album === track.album);
+        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.TRACK, index, artistIndex, ({ artist }: Track) => artist === track.artist);
+        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.TRACK, index, genreIndex, ({ genre }: Track) => genre === track.genre);
+
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.TRACK, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous track or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next track or chunk type if last
+        chunk.writeUInt32(ChunkType.TRACK, 0x0C); // Chunk type
+        chunk.writeUTF16(track.name, 80, 0x10); // Track name
+        chunk.writeUInt32(previousIndexAlbum, 0x60); // Previous track related to album or album if first
+        chunk.writeUInt32(nextIndexAlbum, 0x64); // Next track related to album or album if last
+        chunk.writeUInt32(albumIndex, 0x68); // Album
+        chunk.writeUInt32(previousIndexArtist, 0x6C); // Previous track related to artist or artist if first
+        chunk.writeUInt32(nextIndexArtist, 0x70); // Next track related to artist or artist if last
+        chunk.writeUInt32(artistIndex, 0x74); // Artist
+        chunk.writeUInt32(previousIndexGenre, 0x78); // Previous track related to genre or genre if first
+        chunk.writeUInt32(nextIndexGenre, 0x7C); // Next track related to genre or genre if last
+        chunk.writeUInt32(genreIndex, 0x80); // Genre
+        chunk.writeUInt32(playlistEntries.firstIndex, 0x84); // Last playlist entry in track or -1 if none
+        chunk.writeUInt32(playlistEntries.lastIndex, 0x88); // First playlist entry in track or -1 if none
+        chunk.writeUInt32(playlistEntries.length, 0x8C); // Playlist entry count
+        chunk.writeUInt24(track.duration * 2, 0x90); // Track duration multiplied by 2 (channels?)
+        chunk.writeUInt8(5 + (track.trackNum - 1) * 4, 0x93); // 5 + (track num - 1) * 4 (5, 9, 13, etc. wraps after 255)
+        
+        return chunk;
+    }
+
+    createAlbumChunk(index: number, album: Album) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ALBUM, index, ChunkType.ALBUM);
+        
+        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.album === album);
+
+        const artistIndex = this.findChunkIndex(album.artist);
+        const genreIndex = this.findChunkIndex(album.genre);
+
+        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.ALBUM, index, artistIndex, ({ artist }: Album) => artist === album.artist);
+        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.ALBUM, index, genreIndex, ({ genre }: Album) => genre === album.genre);
+        
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.ALBUM, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous album or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next album or chunk type if last
+        chunk.writeUInt32(ChunkType.ALBUM, 0x0C); // Chunk type
+        chunk.writeUTF16(album.name, 80, 0x10); // Album name
+        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in album
+        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in album
+        chunk.writeUInt32(tracks.length, 0x68); // Track count
+        chunk.writeUInt32(previousIndexArtist, 0x6C); // Previous album related to artist or artist if first
+        chunk.writeUInt32(nextIndexArtist, 0x70); // Next album related to artist or artist if last
+        chunk.writeUInt32(artistIndex, 0x74); // Artist
+        chunk.writeUInt32(previousIndexGenre, 0x78); // Previous album related to genre or genre if first
+        chunk.writeUInt32(nextIndexGenre, 0x7C); // Next album related to genre or genre if last
+        chunk.writeUInt32(genreIndex, 0x80); // Genre
+        // NOTE: there is usually random data 0x88-177 (maybe 0x84-177?) that contains string labels and other stuff, this is also found in the FMIM data of tracks
+        return chunk;
+    }
+
+    createArtistChunk(index: number, artist: Artist) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ARTIST, index, ChunkType.ARTIST);
+
+        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.artist === artist);
+        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.artist === artist);
+
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.ARTIST, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous artist or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next artist displayed or chunk type if last
+        chunk.writeUInt32(ChunkType.ARTIST, 0x0C); // Chunk type
+        chunk.writeUTF16(artist.name, 80, 0x10); // Artist name
+        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in artist
+        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in artist
+        chunk.writeUInt32(tracks.length, 0x68); // Track count
+        chunk.writeUInt32(albums.lastIndex, 0x6C); // Last album in artist
+        chunk.writeUInt32(albums.firstIndex, 0x70); // First album in artist
+        chunk.writeUInt32(albums.length, 0x74); // Album count
+        return chunk;
+    }
+
+    createGenreChunk(index: number, genre: Genre) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.GENRE, index, ChunkType.GENRE);
+
+        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.genre === genre);
+        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.genre === genre);
+
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.GENRE, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous genre or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next genre or chunk type if last
+        chunk.writeUInt32(ChunkType.GENRE, 0x0C); // Chunk type
+        chunk.writeUTF16(genre.name, 80, 0x10); // Genre name
+        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in genre
+        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in genre
+        chunk.writeUInt32(tracks.length, 0x68); // Track count
+        chunk.writeUInt32(albums.lastIndex, 0x6C); // Last album in genre
+        chunk.writeUInt32(albums.firstIndex, 0x70); // First album in genre
+        chunk.writeUInt32(albums.length, 0x74); // Album count
+        return chunk;
+    }
+
+    createPlaylistChunk(index: number, playlist: Playlist) {
+        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLAYLIST, index, ChunkType.PLAYLIST);
+
+        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.playlist === playlist);
+
+        const chunk = new Chunk();
+        chunk.writeUInt32(ChunkType.PLAYLIST, 0x00); // Chunk type
+        chunk.writeUInt32(previousIndex, 0x04); // Previous playlist or chunk type if first
+        chunk.writeUInt32(nextIndex, 0x08); // Next playlist or chunk type if last
+        chunk.writeUInt32(ChunkType.PLAYLIST, 0x0C); // Chunk type
+        chunk.writeUTF16(playlist.name, 80, 0x10); // Playlist name
+        chunk.writeUInt32(playlistEntries.lastIndex, 0x60); // Last playlist entry in playlist
+        chunk.writeUInt32(playlistEntries.firstIndex, 0x64); // First playlist entry in playlist
+        chunk.writeUInt32(playlistEntries.length, 0x68); // Playlist entry count
+        return chunk;
+    }
+
     createHeaderChunk() {
         const chunk = new Chunk();
         chunk.writeUInt32(ChunkType.HEADER, 0x00); // Chunk type
@@ -182,149 +324,12 @@ export default class Mindex {
 
         const chunk = new Chunk();
         chunk.writeUInt32(ChunkType.CHUNK_HEADER, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Assumed to be chunk index of chunk header above this one or 0 if first chunk header
-        chunk.writeUInt32(nextIndex, 0x08); // Assumed to be chunk index of chunk header under this one or 0 if last chunk header
-        chunk.writeUInt32(relatedChunks.lastIndex, 0x10); // Chunk index of last related chunk or x if none
-        chunk.writeUInt32(relatedChunks.firstIndex, 0x14); // Chunk index of first related chunk or x if none
+        chunk.writeUInt32(previousIndex, 0x04); // Assumed to be previous chunk header or 0 if first
+        chunk.writeUInt32(nextIndex, 0x08); // Assumed to be next chunk header or 0 if last
+        chunk.writeUInt32(relatedChunks.lastIndex, 0x10); // Last related chunk or x if none
+        chunk.writeUInt32(relatedChunks.firstIndex, 0x14); // First related chunk or x if none
         chunk.writeUInt32(relatedChunks.length, 0x18); // Related chunk count
         chunk.writeUInt32(chunkHeader, 0x1C); // Assumed to be related chunk type
-        return chunk;
-    }
-
-    createPlaceholderChunk(index: number) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLACEHOLDER, index, ChunkType.PLACEHOLDER);
-
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of placeholder above this one or chunk type if first placeholder
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of placeholder under this one or chunk type if last placeholder
-        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x0C); // Chunk type
-        return chunk;
-    }
-
-    createAlbumChunk(index: number, album: Album) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ALBUM, index, ChunkType.ALBUM);
-        
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.album === album);
-
-        const artistIndex = this.findChunkIndex(album.artist);
-        const genreIndex = this.findChunkIndex(album.genre);
-
-        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.ALBUM, index, artistIndex);
-        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.ALBUM, index, genreIndex);
-        
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.ALBUM, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of album displayed above this one or chunk type if first album
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of album displayed under this one or chunk type if last album
-        chunk.writeUInt32(ChunkType.ALBUM, 0x0C); // Chunk type
-        chunk.writeUTF16(album.name, 80, 0x10); // Album name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Chunk index of last track displayed in album
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // Chunk index of first track displayed in album
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(previousIndexArtist, 0x6C); // Chunk index of album displayed above this one or chunk index of artist if first album
-        chunk.writeUInt32(nextIndexArtist, 0x70); // Chunk index of album displayed under this one or chunk index of artist if last album
-        chunk.writeUInt32(artistIndex, 0x74); // Chunk index of artist
-        chunk.writeUInt32(previousIndexGenre, 0x78); // Chunk index of album displayed above this one or chunk index of genre if first album
-        chunk.writeUInt32(nextIndexGenre, 0x7C); // Chunk index of album displayed under this one or chunk index of genre if last album
-        chunk.writeUInt32(genreIndex, 0x80); // Chunk index of genre
-        // NOTE: there is usually random data 0x88-177 (maybe 0x84-177?) that contains string labels and other stuff, this is also found in the FMIM data of tracks
-        return chunk;
-    }
-
-    createTrackChunk(index: number, track: Track) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.TRACK, index, ChunkType.TRACK);
-
-        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.track === track, -1);
-
-        const albumIndex = this.findChunkIndex(track.album);
-        const artistIndex = this.findChunkIndex(track.artist);
-        const genreIndex = this.findChunkIndex(track.genre);
-
-        const { previousIndex: previousIndexAlbum, nextIndex: nextIndexAlbum } = this.findClosestChunks(ChunkType.TRACK, index, albumIndex);
-        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.TRACK, index, artistIndex);
-        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.TRACK, index, genreIndex);
-
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.TRACK, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of track displayed above this one or chunk type if first track
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of track displayed under this one or chunk type if last track
-        chunk.writeUInt32(ChunkType.TRACK, 0x0C); // Chunk type
-        chunk.writeUTF16(track.name, 80, 0x10); // Track name
-        chunk.writeUInt32(previousIndexAlbum, 0x60); // Chunk index of track displayed above this one or chunk index of album if first track in album
-        chunk.writeUInt32(nextIndexAlbum, 0x64); // Chunk index of track displayed under this one or chunk index of album if last track in album
-        chunk.writeUInt32(albumIndex, 0x68); // Chunk index of album
-        chunk.writeUInt32(previousIndexArtist, 0x6C); // Chunk index of track displayed above this one or chunk index of artist if first track in album
-        chunk.writeUInt32(nextIndexArtist, 0x70); // Chunk index of track displayed under this one or chunk index of artist if last track in album
-        chunk.writeUInt32(artistIndex, 0x74); // Chunk index of artist
-        chunk.writeUInt32(previousIndexGenre, 0x78); // Chunk index of track displayed above this one or chunk index of genre if first track in album
-        chunk.writeUInt32(nextIndexGenre, 0x7C); // Chunk index of track displayed above this one or chunk index of genre if last track in album
-        chunk.writeUInt32(genreIndex, 0x80); // Chunk index of genre
-        chunk.writeUInt32(playlistEntries.firstIndex, 0x84); // Chunk index of last playlist entry in track, -1 if none
-        chunk.writeUInt32(playlistEntries.lastIndex, 0x88); // Chunk index of first playlist entry in track, -1 if none
-        chunk.writeUInt32(playlistEntries.length, 0x8C); // Playlist entry count
-        chunk.writeUInt24(track.duration * 2, 0x90); // Track duration multiplied by 2 (channels?)
-        chunk.writeUInt8(5 + (track.trackNum - 1) * 4, 0x93); // 5 + (track num - 1) * 4 (5, 9, 13, etc. wraps after 255)
-        
-        return chunk;
-    }
-
-    createArtistChunk(index: number, artist: Artist) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ARTIST, index, ChunkType.ARTIST);
-
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.artist === artist);
-        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.artist === artist);
-
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.ARTIST, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of artist displayed above this one or chunk type if first artist
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of artist displayed under this one or chunk type if last artist
-        chunk.writeUInt32(ChunkType.ARTIST, 0x0C); // Chunk type
-        chunk.writeUTF16(artist.name, 80, 0x10); // Artist name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Chunk index of last track displayed in artist
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // Chunk index of first track displayed in artist
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(albums.lastIndex, 0x6C); // Chunk index of last album displayed in artist
-        chunk.writeUInt32(albums.firstIndex, 0x70); // Chunk index of first album displayed in artist
-        chunk.writeUInt32(albums.length, 0x74); // Album count
-        return chunk;
-    }
-
-    createGenreChunk(index: number, genre: Genre) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.GENRE, index, ChunkType.GENRE);
-
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.genre === genre);
-        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.genre === genre);
-
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.GENRE, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of genre displayed above this one or chunk type if first genre
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of genre displayed under this one or chunk type if last genre
-        chunk.writeUInt32(ChunkType.GENRE, 0x0C); // Chunk type
-        chunk.writeUTF16(genre.name, 80, 0x10); // Genre name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Chunk index of last track displayed in genre
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // Chunk index of first track displayed in genre
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(albums.lastIndex, 0x6C); // Chunk index of last album displayed in genre
-        chunk.writeUInt32(albums.firstIndex, 0x70); // Chunk index of first album displayed in genre
-        chunk.writeUInt32(albums.length, 0x74); // Album count
-        return chunk;
-    }
-
-    createPlaylistChunk(index: number, playlist: Playlist) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLAYLIST, index, ChunkType.PLAYLIST);
-
-        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.playlist === playlist);
-
-        const chunk = new Chunk();
-        chunk.writeUInt32(ChunkType.PLAYLIST, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Chunk index of playlist displayed above this one or chunk type if first playlist
-        chunk.writeUInt32(nextIndex, 0x08); // Chunk index of playlist displayed under this one or chunk type if last playlist
-        chunk.writeUInt32(ChunkType.PLAYLIST, 0x0C); // Chunk type
-        chunk.writeUTF16(playlist.name, 80, 0x10); // Playlist name
-        chunk.writeUInt32(playlistEntries.lastIndex, 0x60); // Chunk index of last playlist entry in playlist
-        chunk.writeUInt32(playlistEntries.firstIndex, 0x64); // Chunk index of first playlist entry in playlist
-        chunk.writeUInt32(playlistEntries.length, 0x68); // Playlist entry count
         return chunk;
     }
 
@@ -337,12 +342,12 @@ export default class Mindex {
 
         const chunk = new Chunk();
         chunk.writeUInt32(ChunkType.PLAYLIST_ENTRY, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndexPlaylist, 0x04); // Chunk index of previous playlist entry related to playlist or chunk index of playlist if first playlist entry related to playlist
-        chunk.writeUInt32(afterIndexPlaylist, 0x08); // Chunk index of next playlist entry related to playlist or chunk index of playlist if last playlist entry related to playlist
-        chunk.writeUInt32(playlistIndex, 0x0C); // Chunk index of playlist
-        chunk.writeUInt32(previousIndexTrack, 0x10); // Chunk index of previous playlist entry related to track or chunk index of track if first playlist entry related to track
-        chunk.writeUInt32(afterIndexTrack, 0x14); // Chunk index of next playlist entry related to track or chunk index of track if last playlist entry related to track
-        chunk.writeUInt32(trackIndex, 0x18); // Chunk index of related track
+        chunk.writeUInt32(previousIndexPlaylist, 0x04); // Previous playlist entry related to playlist or playlist if first
+        chunk.writeUInt32(afterIndexPlaylist, 0x08); // Next playlist entry related to playlist or playlist if last
+        chunk.writeUInt32(playlistIndex, 0x0C); // Playlist
+        chunk.writeUInt32(previousIndexTrack, 0x10); // Previous playlist entry related to track or track if first
+        chunk.writeUInt32(afterIndexTrack, 0x14); // Next playlist entry related to track or track if last
+        chunk.writeUInt32(trackIndex, 0x18); // Track
         return chunk;
     }
 }
