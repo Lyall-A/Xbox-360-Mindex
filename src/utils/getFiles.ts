@@ -1,13 +1,13 @@
-const fs = require("fs");
-const path = require("path");
+import fs from 'fs';
+import path from 'path';
 
-function getFiles(dir) {
-    const files = [];
+export default function getFiles(dir: string) {
+    const files: string[] = [];
 
     (function readDir(dirPath = dir) {
         const dirFiles = fs.readdirSync(dirPath);
         for (const file of dirFiles) {
-            const filePath = path.resolve(dirPath, file);
+            const filePath = path.join(dirPath, file);
             
             if (fs.statSync(filePath).isDirectory()) {
                 readDir(filePath);
@@ -19,5 +19,3 @@ function getFiles(dir) {
 
     return files;
 };
-
-module.exports = getFiles;

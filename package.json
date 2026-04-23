@@ -1,0 +1,17 @@
+{
+  "name": "xbox-360-mindex",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Lyall-A/Xbox-360-Mindex#readme",
+  "bugs": {
+    "url": "https://github.com/Lyall-A/Xbox-360-Mindex/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lyall-A/Xbox-360-Mindex.git"
+  },
+  "license": "GPL-3.0",
+  "author": "Lyall",
+  "main": "src/index.ts",
+  "scripts": { }
+}

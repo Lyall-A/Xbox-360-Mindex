@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "module": "nodenext",
+        "target": "esnext",
+        "types": ["node"],
+		"noImplicitAny": true,
+		"strict": true
+    },
+    "include": ["src/**/*"]
+}

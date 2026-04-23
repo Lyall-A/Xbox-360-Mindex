@@ -1,30 +1,33 @@
 {
-    "albumTitle": "Album",
-    "artistTitle": "Artist",
-    "genreTitle": "Genre",
-    "titleFormat": "{artist} - {title}",
-    "defaultTitle": null,
+    "defaultTrack": null,
     "defaultAlbum": "Unknown Album",
     "defaultArtist": "Unknown Artist",
     "defaultGenre": "Unknown Genre",
-    "sortType": "date",
-    "sortDirection": "ascending",
-    "includeOldTracks": true,
-    "keepWma": true,
-    "backupMindex": true,
-    "supportedFormats": [
-        "wma",
-        "mp3",
-        "wav",
-        "flac",
-        "ogg",
-        "aac",
-        "opus"
-    ],
 
-    "ffmpegPath": "ffmpeg",
+    "artistSeperators": [";"],
+    "genreSeperators": [";"],
+    "artistJoin": ", ",
+    "genreJoin": ", ",
+    "useSingleArtist": true,
+    "useSingleGenre": true,
+    
+    "keepTracks": true,
+    "checkOriginalFiles": false,
+    "backupExistingMindex": true,
+
     "tracksPath": "tracks",
-    "trackInfoPath": "tracks.json",
     "wmaOutputPath": "wma_tracks",
-    "mindexOutputPath": "mindex"
+    "manifestOutputPath": "manifest.json",
+    "mindexOutputPath": "mindex",
+
+    "extensions": [
+        ".wma",
+        ".mp3",
+        ".wav",
+        ".flac",
+        ".ogg",
+        ".aac",
+        ".opus"
+    ],
+    "ffmpegPath": "ffmpeg"
 }
