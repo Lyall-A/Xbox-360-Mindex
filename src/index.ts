@@ -41,7 +41,7 @@ const mindexInputPath = process.argv[2];
 
         const wmaPath = path.join(config.wmaOutputPath, `${path.basename(trackPath, path.extname(trackPath))}.wma`);
         console.log(`Converting '${trackPath}' to WMA...`);
-        const metadata = await convertTrack(trackPath, wmaPath);
+        const metadata = await convertTrack(trackPath, wmaPath, config.ffmpegPath);
         manifest.push({ trackPath, wmaPath, metadata });
     }
 

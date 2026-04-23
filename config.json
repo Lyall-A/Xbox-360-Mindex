@@ -29,5 +29,5 @@
         ".aac",
         ".opus"
     ],
-    "ffmpegPath": "ffmpeg"
+    "ffmpegPath": "./ffmpeg"
 }
