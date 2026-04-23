@@ -20,13 +20,18 @@ const manifest: {
 }[] = (config.manifestOutputPath && fs.existsSync(config.manifestOutputPath)) ?
     JSON.parse(fs.readFileSync(config.manifestOutputPath, 'utf8')) : [];
 
+const mindexInputPath = process.argv[2];
+
 (async () => {
+    // TODO: optionally import mindexInputPath and extract manifest and WMA from it
     const mindex = new Mindex();
 
     const tracks: Track[] = [];
     const albums: Album[] = [];
     const artists: Artist[] = [];
     const genres: Genre[] = [];
+
+    if (!fs.existsSync(config.wmaOutputPath)) fs.mkdirSync(config.wmaOutputPath, { recursive: true }); // create WMA directory
     
     // convert tracks and create manifest
     for (const trackPath of trackPaths) {
@@ -50,14 +55,19 @@ const manifest: {
     }
 
     fs.mkdirSync(config.mindexOutputPath, { recursive: true }); // create mindex directory
-    fs.mkdirSync(path.join(config.mindexOutputPath, 'media', '0000'), { recursive: true }); // create fmim directory
+    fs.mkdirSync(path.join(config.mindexOutputPath, 'media', '0000'), { recursive: true }); // create FMIM directory
 
     // create mindex
     for (const { trackPath, wmaPath, metadata } of manifest) {
+        if (!fs.existsSync(wmaPath) || (config.checkOriginalFiles && !fs.existsSync(trackPath))) {
+            console.log(`The file '${path.basename(trackPath)}' was deleted!`);
+            continue;
+        };
+
         const trackName = normalizeName(metadata.title ?? config.defaultTrack ?? path.basename(trackPath, path.extname(trackPath)));
         const albumName = normalizeName(metadata.album ?? config.defaultAlbum ?? 'Unknown Album');
-        const artistName = normalizeName(metadata.artist ?? config.defaultArtist ?? 'Unknown Artist', config.genreSeperators, config.genreJoin, config.useFirstGenre);
-        const genreName = normalizeName(metadata.genre ?? config.defaultGenre ?? 'Unknown Genre', config.genreSeperators, config.genreJoin, config.useFirstGenre);
+        const artistName = normalizeName(metadata.artist ?? config.defaultArtist ?? 'Unknown Artist', config.artistSeperators, config.artistJoin, config.useSingleArtist);
+        const genreName = normalizeName(metadata.genre ?? config.defaultGenre ?? 'Unknown Genre', config.genreSeperators, config.genreJoin, config.useSingleGenre);
 
         const album = getAlbum(albumName, artistName, genreName);
         const artist = getArtist(artistName);
@@ -79,14 +89,21 @@ const manifest: {
     console.log('Writing mindex file...');
     fs.writeFileSync(path.join(config.mindexOutputPath, 'mindex.xmi'), mindex.buildChunks()); // write mindex.xmi
 
-    console.log('Writing manifest file...');
-    fs.writeFileSync(config.manifestOutputPath, JSON.stringify(manifest)); // write manifest
+    if (config.keepTracks) {
+        // write manifest
+        console.log('Writing manifest file...');
+        fs.writeFileSync(config.manifestOutputPath, JSON.stringify(manifest));
+    } else {
+        // delete WMA directory
+        console.log('Deleting WMA files...');
+        fs.rmSync(config.wmaOutputPath, { recursive: true });
+    }
 
-    function normalizeName(name: string, seperators?: string[], join?: string, useFirst?: boolean) {
+    function normalizeName(name: string, seperators?: string[], join?: string, useSingle?: boolean) {
         if (seperators?.length) {
             for (const seperator of seperators) {
                 const split = name.split(seperator)
-                name = useFirst ? split[0] : split.join(join ?? seperator);
+                name = useSingle ? split[0] : split.join(join ?? seperator);
             }
         }
         return name;

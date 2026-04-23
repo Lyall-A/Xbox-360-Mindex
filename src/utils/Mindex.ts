@@ -55,14 +55,19 @@ export default class Mindex {
     genreAlbumSort = SortOrder.NAME_ASC; // How albums in a genre are sorted (NOTE: not sure what this changes as genre only shows tracks)
     playlistSort = SortOrder.NAME_ASC; // How playlists are sorted
 
-    constructor() {
-        this.createHeader();
-        this.createChunkHeader(ChunkType.PLACEHOLDER);
-        this.createChunkHeader(ChunkType.TRACK);
-        this.createChunkHeader(ChunkType.ALBUM);
-        this.createChunkHeader(ChunkType.ARTIST);
-        this.createChunkHeader(ChunkType.GENRE);
-        this.createChunkHeader(ChunkType.PLAYLIST);
+    constructor(mindex?: Buffer) {
+        if (!mindex) {
+            // Create new mindex
+            this.createHeader();
+            this.createChunkHeader(ChunkType.PLACEHOLDER);
+            this.createChunkHeader(ChunkType.TRACK);
+            this.createChunkHeader(ChunkType.ALBUM);
+            this.createChunkHeader(ChunkType.ARTIST);
+            this.createChunkHeader(ChunkType.GENRE);
+            this.createChunkHeader(ChunkType.PLAYLIST);
+        } else {
+            // TODO: Import mindex
+        }
     }
 
     createPlaceholder() {

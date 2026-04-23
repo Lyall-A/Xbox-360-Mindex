@@ -8,9 +8,18 @@
     "genreSeperators": [";"],
     "artistJoin": ", ",
     "genreJoin": ", ",
-    "useFirstArtist": true,
-    "useFirstGenre": true,
+    "useSingleArtist": true,
+    "useSingleGenre": true,
     
+    "keepTracks": true,
+    "checkOriginalFiles": true,
+    "backupExistingMindex": true,
+
+    "tracksPath": "tracks",
+    "wmaOutputPath": "wma_tracks",
+    "manifestOutputPath": "manifest.json",
+    "mindexOutputPath": "mindex",
+
     "extensions": [
         ".wma",
         ".mp3",
@@ -20,10 +29,5 @@
         ".aac",
         ".opus"
     ],
-    "ffmpegPath": "ffmpeg",
-    "tracksPath": "tracks",
-    "wmaOutputPath": "wma_tracks",
-    "manifestOutputPath": "manifest.json",
-    "backupExistingMindex": true,
-    "mindexOutputPath": "mindex"
+    "ffmpegPath": "ffmpeg"
 }
