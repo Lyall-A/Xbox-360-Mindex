@@ -12,7 +12,7 @@
     "useSingleGenre": true,
     
     "keepTracks": true,
-    "checkOriginalFiles": true,
+    "checkOriginalFiles": false,
     "backupExistingMindex": true,
 
     "tracksPath": "tracks",
