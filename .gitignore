@@ -1,5 +1,5 @@
-songs
-tracks
+tracks/*
+!tracks/README.md
 wma_tracks
 mindex*
 tracks.json
