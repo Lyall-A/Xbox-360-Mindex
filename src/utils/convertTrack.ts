@@ -1,7 +1,5 @@
 import child_process from 'child_process';
 
-import config from '../../config.json';
-
 export type TrackMetadata = {
     title?: string;
     artist?: string;
@@ -12,9 +10,9 @@ export type TrackMetadata = {
     length: number;
 };
 
-export default function convertTrack(trackPath: string, wmaPath: string): Promise<TrackMetadata> {
+export default function convertTrack(trackPath: string, wmaPath: string, ffmpegPath = 'ffmpeg'): Promise<TrackMetadata> {
     return new Promise((resolve, reject) => {
-        const ffmpegProcess = child_process.spawn(config.ffmpegPath, [
+        const ffmpegProcess = child_process.spawn(ffmpegPath, [
             '-i', trackPath, // Original input path
             '-map', 'a:0', // First audio stream
             '-c:a', 'wmav2', // WMA codec

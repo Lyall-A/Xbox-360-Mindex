@@ -9,7 +9,7 @@ import convertTrack, { TrackMetadata } from './utils/convertTrack';
 import getFiles from './utils/getFiles';
 import { Album, Artist, Genre, Track } from './utils/types';
 
-import config from '../config.json';
+const config = JSON.parse(fs.readFileSync('./config.json', 'utf8')); // TODO: better handling of config
 
 const mindexInputPath = process.argv[2];
 
@@ -17,6 +17,7 @@ const mindexInputPath = process.argv[2];
     // TODO: optionally import mindexInputPath and extract manifest and WMA from it
     if (!fs.existsSync(config.tracksPath)) return console.log('There is no tracks folder!');
 
+    // TODO: make this a bit better
     const trackPaths = getFiles(config.tracksPath).filter(file => !config.extensions?.length || config.extensions.includes(path.extname(file).toLowerCase()));
     const manifest: {
         trackPath: string;
