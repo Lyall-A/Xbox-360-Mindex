@@ -11,19 +11,19 @@ import { Album, Artist, Genre, Track } from './utils/types';
 
 import config from '../config.json';
 
-const trackPaths = getFiles(config.tracksPath)
-    .filter(file => !config.extensions?.length || config.extensions.includes(path.extname(file).toLowerCase()));
-const manifest: {
-    trackPath: string;
-    wmaPath: string;
-    metadata: TrackMetadata;
-}[] = (config.manifestOutputPath && fs.existsSync(config.manifestOutputPath)) ?
-    JSON.parse(fs.readFileSync(config.manifestOutputPath, 'utf8')) : [];
-
 const mindexInputPath = process.argv[2];
 
 (async () => {
     // TODO: optionally import mindexInputPath and extract manifest and WMA from it
+    if (!fs.existsSync(config.tracksPath)) return console.log('There is no tracks folder!');
+
+    const trackPaths = getFiles(config.tracksPath).filter(file => !config.extensions?.length || config.extensions.includes(path.extname(file).toLowerCase()));
+    const manifest: {
+        trackPath: string;
+        wmaPath: string;
+        metadata: TrackMetadata;
+    }[] = (config.manifestOutputPath && fs.existsSync(config.manifestOutputPath)) ? JSON.parse(fs.readFileSync(config.manifestOutputPath, 'utf8')) : [];
+
     const mindex = new Mindex();
 
     const tracks: Track[] = [];
