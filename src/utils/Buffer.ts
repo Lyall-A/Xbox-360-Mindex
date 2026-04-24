@@ -1,3 +1,5 @@
+import NodeBuffer from 'buffer';
+
 export default class Buffer extends Uint8Array {
     view: DataView;
     offset: number;
@@ -80,6 +82,12 @@ export default class Buffer extends Uint8Array {
         }
 
         return string;
+    }
+
+    static fromUint8Array(uint8Array: Uint8Array) {
+        const buffer = new Buffer(uint8Array.length);
+        buffer.set(uint8Array);
+        return buffer;
     }
 
     static concat(buffers: Buffer[]) {

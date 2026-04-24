@@ -1,7 +1,8 @@
+import { ChunkType } from './Mindex';
+
 export type Track = {
     name: string;
     duration: number;
-    trackNum?: number;
     album: Album;
     artist: Artist;
     genre: Genre;
@@ -24,6 +25,14 @@ export type Genre = {
 export type Playlist = {
     name: string;
 };
+
+export type ChunkHeader =
+    | ChunkType.PLACEHOLDER
+    | ChunkType.TRACK
+    | ChunkType.ALBUM
+    | ChunkType.ARTIST
+    | ChunkType.GENRE
+    | ChunkType.PLAYLIST;
 
 export type PlaylistEntry = {
     playlist: Playlist;

@@ -1,5 +1,14 @@
 import Buffer from './Buffer';
-import { Track, Album, Artist, Genre, Playlist, PlaylistEntry } from './types';
+import PlaceholderChunk from './chunks/PlaceholderChunk';
+import TrackChunk from './chunks/TrackChunk';
+import AlbumChunk from './chunks/AlbumChunk';
+import ArtistChunk from './chunks/ArtistChunk';
+import GenreChunk from './chunks/GenreChunk';
+import PlaylistChunk from './chunks/PlaylistChunk';
+import HeaderChunk from './chunks/HeaderChunk';
+import ChunkHeaderChunk from './chunks/ChunkHeaderChunk';
+import PlaylistEntryChunk from './chunks/PlaylistEntryChunk';
+import { Track, Album, Artist, Genre, Playlist, ChunkHeader, PlaylistEntry } from './types';
 
 export enum ChunkType {
     PLACEHOLDER = 1,
@@ -11,13 +20,6 @@ export enum ChunkType {
     HEADER,
     CHUNK_HEADER,
     PLAYLIST_ENTRY
-};
-
-export enum SortOrder {
-    NAME_ASC,
-    NAME_DESC,
-    TRACK_ASC,
-    TRACK_DESC,
 };
 
 export type Chunk = (
@@ -34,29 +36,20 @@ export type Chunk = (
     data?: Buffer;
 };
 
-export type ChunkHeader =
-    | ChunkType.PLACEHOLDER
-    | ChunkType.TRACK
-    | ChunkType.ALBUM
-    | ChunkType.ARTIST
-    | ChunkType.GENRE
-    | ChunkType.PLAYLIST;
-
 export default class Mindex {
     chunks: Chunk[] = [];
-    // TODO: idk if i should really keep this or not, i might end up just sorting it from main program and removing it from here. i also dont like that i need trackNum type in track
-    trackSortOrders = [SortOrder.NAME_ASC]; // How tracks are sorted
-    albumSortOrders = [SortOrder.NAME_ASC]; // How albums are sorted
-    albumTrackSortOrders = [SortOrder.TRACK_ASC, SortOrder.NAME_ASC]; // How tracks in a album are sorted
-    artistSortOrders = [SortOrder.NAME_ASC]; // How artists are sorted
-    artistTrackSortOrders = [SortOrder.NAME_ASC]; // How tracks in a artist are sorted
-    artistAlbumSortOrders = [SortOrder.NAME_ASC]; // How albums in a artist are sorted
-    genreSortOrders = [SortOrder.NAME_ASC]; // Genre sort
-    genreTrackSortOrders = [SortOrder.NAME_ASC]; // How tracks in a genre are sorted
-    genreAlbumSortOrders = [SortOrder.NAME_ASC]; // How albums in a genre are sorted (NOTE: not sure what this changes as genre only shows tracks)
-    playlistSortOrders = [SortOrder.NAME_ASC]; // How playlists are sorted
+    trackSortCompare?: (a: any, b: any) => number; // How tracks are sorted
+    albumSortCompare?: (a: any, b: any) => number; // How albums are sorted
+    albumTrackSortCompare?: (a: any, b: any) => number; // How tracks in a album are sorted
+    artistSortCompare?: (a: any, b: any) => number; // How artists are sorted
+    artistTrackSortCompare?: (a: any, b: any) => number; // How tracks in a artist are sorted
+    artistAlbumSortCompare?: (a: any, b: any) => number; // How albums in a artist are sorted
+    genreSortCompare?: (a: any, b: any) => number; // Genre sort
+    genreTrackSortCompare?: (a: any, b: any) => number; // How tracks in a genre are sorted
+    genreAlbumSortCompare?: (a: any, b: any) => number; // How albums in a genre are sorted (NOTE: not sure what this changes as genre only shows tracks)
+    playlistSortCompare?: (a: any, b: any) => number; // How playlists are sorted
 
-    constructor(mindex?: Buffer) {
+    constructor(mindex?: Uint8Array) {
         if (!mindex) {
             // Create new mindex
             this.createHeader();
@@ -67,7 +60,14 @@ export default class Mindex {
             this.createChunkHeader(ChunkType.GENRE);
             this.createChunkHeader(ChunkType.PLAYLIST);
         } else {
-            // TODO: Import mindex
+            // Import mindex
+            for (let offset = 0; offset < mindex.length; offset += 600) {
+                const data = Buffer.fromUint8Array(mindex.subarray(offset, offset + 600));
+                const chunkType = data.readUInt32(0x00);
+                this.addChunk(chunkType, { }, data);
+            }
+
+            this.parseChunks();
         }
     }
 
@@ -76,12 +76,11 @@ export default class Mindex {
         return;
     }
 
-    // TODO: use object instead of a bunch of args
-    createTrack(name: string, duration: number, album: Album, artist: Artist, genre: Genre, trackNum?: number) {
+    // TODO: use object instead of a bunch of args??
+    createTrack(name: string, duration: number, album: Album, artist: Artist, genre: Genre) {
         const track: Track = {
             name,
             duration,
-            trackNum,
             album,
             artist,
             genre
@@ -130,12 +129,48 @@ export default class Mindex {
         return playlistEntry;
     }
 
-    addChunk(type: ChunkType, value?: any) {
-        const chunk = { type, value };
+    setTrackSort(compare: (a: Track, b: Track) => number) { this.trackSortCompare = compare; }
+    setAlbumSort(compare: (a: Album, b: Album) => number) { this.albumSortCompare = compare; }
+    setAlbumTrackSort(compare: (a: Track, b: Track) => number) { this.albumTrackSortCompare = compare; }
+    setArtistSort(compare: (a: Artist, b: Artist) => number) { this.artistSortCompare = compare; }
+    setArtistTrackSort(compare: (a: Track, b: Track) => number) { this.artistTrackSortCompare = compare; }
+    setArtistAlbumSort(compare: (a: Album, b: Album) => number) { this.artistAlbumSortCompare = compare; }
+    setGenreSort(compare: (a: Genre, b: Genre) => number) { this.genreSortCompare = compare; }
+    setGenreTrackSort(compare: (a: Track, b: Track) => number) { this.genreTrackSortCompare = compare; }
+    setGenreAlbumSort(compare: (a: Album, b: Album) => number) { this.genreAlbumSortCompare = compare; }
+    setPlaylistSort(compare: (a: Playlist, b: Playlist) => number) { this.playlistSortCompare = compare; }
+    setAllTrackSort(compare: (a: Track, b: Track) => number) {
+        this.setTrackSort(compare);
+        this.setAlbumTrackSort(compare);
+        this.setArtistTrackSort(compare);
+        this.setGenreTrackSort(compare);
+    }
+    setAllAlbumSort(compare: (a: Album, b: Album) => number) {
+        this.setAlbumSort(compare);
+        this.setArtistAlbumSort(compare);
+        this.setGenreAlbumSort(compare);
+    }
+
+    addChunk(type: ChunkType, value?: any, data?: any) {
+        const chunk = { type, value, data };
         return this.chunks.push(chunk) - 1;
     }
 
-    buildChunks() {
+    parseChunks() {
+        for (let index = 0; index < this.chunks.length; index++) {
+            const chunk = this.chunks[index];
+
+            if (chunk.type === ChunkType.TRACK) Object.assign(chunk.value, this.parseTrackChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.ALBUM) Object.assign(chunk.value, this.parseAlbumChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.ARTIST) Object.assign(chunk.value, this.parseArtistChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.GENRE) Object.assign(chunk.value, this.parseGenreChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.PLAYLIST) Object.assign(chunk.value, this.parsePlaylistChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.CHUNK_HEADER) Object.assign(chunk.value, this.parseChunkHeaderChunk(chunk.data!)); else
+            if (chunk.type === ChunkType.PLAYLIST_ENTRY) Object.assign(chunk.value, this.parsePlaylistEntryChunk(chunk.data!));
+        }
+    }
+
+    createChunks() {
         for (let index = 0; index < this.chunks.length; index++) {
             const chunk = this.chunks[index];
 
@@ -154,38 +189,9 @@ export default class Mindex {
     }
 
     // TODO: maybe make compare function decent
-    filterChunks(type: ChunkType, filter?: (value: any, chunk: any) => any, sortOrders?: SortOrder[]) {
+    filterChunks(type: ChunkType, filter?: (value: any, chunk: any) => any, sortCompare?: (a: any, b: any) => number) {
         const chunks: { chunk: Chunk; index: number; }[] = this.chunks.map((chunk, index) => ({ chunk, index })).filter(({ chunk }) => chunk.type === type && (filter ? filter(chunk.value, chunk) : true));
-
-        if (sortOrders?.length) {
-            chunks.sort(({ chunk: a }: any, { chunk: b }: any) => {
-                for (const sortOrder of sortOrders) {
-                    let result;
-
-                    if (sortOrder === SortOrder.NAME_ASC || sortOrder === SortOrder.NAME_DESC) {
-                        const valueA: string | undefined = a.value?.name;
-                        const valueB: string | undefined = b.value?.name;
-                        if (valueA !== undefined && valueB !== undefined) result =
-                            sortOrder === SortOrder.NAME_ASC ?
-                                valueA.localeCompare(valueB) :
-                                valueB.localeCompare(valueA);
-                    }
-                    else if (sortOrder === SortOrder.TRACK_ASC || sortOrder === SortOrder.TRACK_DESC) {
-                        const valueA: number | undefined = a.value?.trackNum;
-                        const valueB: number | undefined = b.value?.trackNum;
-                        if (valueA !== undefined && valueB !== undefined) result =
-                            sortOrder === SortOrder.TRACK_ASC ?
-                                valueA - valueB :
-                                valueB - valueA;
-                    }
-                
-                    if (result === undefined) continue;
-                    return result;
-                }
-                return 0;
-            });
-        };
-
+        if (sortCompare) chunks.sort((a, b) => sortCompare(a.chunk.value, b.chunk.value));
         return {
             chunks: chunks.map(i => i.chunk),
             indexes: chunks.map(i => i.index),
@@ -198,8 +204,8 @@ export default class Mindex {
         return index;
     }
 
-    findChunks(type: ChunkType, filter?: (value: any, chunk: any) => any, sortOrders?: SortOrder[], defaultIndex?: number) {
-        const { chunks, indexes, length } = this.filterChunks(type, filter, sortOrders);
+    findChunks(type: ChunkType, filter?: (value: any, chunk: any) => any, sortCompare?: (a: any, b: any) => number, defaultIndex?: number) {
+        const { chunks, indexes, length } = this.filterChunks(type, filter, sortCompare);
         const firstIndex = indexes[0] ?? defaultIndex;
         const lastIndex = indexes[indexes.length - 1] ?? defaultIndex;
         if (firstIndex === undefined || lastIndex === undefined) throw new Error('An index is undefined!');
@@ -211,8 +217,8 @@ export default class Mindex {
         };
     }
 
-    findClosestChunks(type: ChunkType, index: number, defaultIndex?: number, sortOrders?: SortOrder[], filter?: (value: any, chunk: any) => any) {
-        const { indexes } = this.filterChunks(type, filter, sortOrders);
+    findClosestChunks(type: ChunkType, index: number, defaultIndex?: number, sortCompare?: (a: any, b: any) => number, filter?: (value: any, chunk: any) => any) {
+        const { indexes } = this.filterChunks(type, filter, sortCompare);
         const sortedIndex = indexes.indexOf(index);
         if (sortedIndex < 0) throw new Error('Could not find chunk!');
         const previousIndex = indexes[sortedIndex - 1] ?? defaultIndex;
@@ -224,200 +230,28 @@ export default class Mindex {
         };
     }
 
-    createPlaceholderChunk(index: number) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLACEHOLDER, index, ChunkType.PLACEHOLDER);
+    createPlaceholderChunk(index: number) { return new PlaceholderChunk(this).create(index); }
 
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous placeholder or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next placeholder or chunk type if last
-        chunk.writeUInt32(ChunkType.PLACEHOLDER, 0x0C); // Chunk type
-        return chunk;
-    }
+    createTrackChunk(index: number, track: Track) { return new TrackChunk(this).create(index, track); }
+    parseTrackChunk(chunk: Buffer) { return new TrackChunk(this).parse(chunk); }
 
-    createTrackChunk(index: number, track: Track) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.TRACK, index, ChunkType.TRACK, this.trackSortOrders);
+    createAlbumChunk(index: number, album: Album) { return new AlbumChunk(this).create(index, album); }
+    parseAlbumChunk(chunk: Buffer) { return new AlbumChunk(this).parse(chunk); }
 
-        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.track === track, undefined, -1);
+    createArtistChunk(index: number, artist: Artist) { return new ArtistChunk(this).create(index, artist); }
+    parseArtistChunk(chunk: Buffer) { return new ArtistChunk(this).parse(chunk); }
 
-        const albumIndex = this.findChunkIndex(track.album);
-        const artistIndex = this.findChunkIndex(track.artist);
-        const genreIndex = this.findChunkIndex(track.genre);
+    createGenreChunk(index: number, genre: Genre) { return new GenreChunk(this).create(index, genre); }
+    parseGenreChunk(chunk: Buffer) { return new GenreChunk(this).parse(chunk); }
 
-        const { previousIndex: previousIndexAlbum, nextIndex: nextIndexAlbum } = this.findClosestChunks(ChunkType.TRACK, index, albumIndex, this.albumTrackSortOrders, ({ album }: Track) => album === track.album);
-        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.TRACK, index, artistIndex, this.artistTrackSortOrders, ({ artist }: Track) => artist === track.artist);
-        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.TRACK, index, genreIndex, this.genreTrackSortOrders, ({ genre }: Track) => genre === track.genre);
+    createPlaylistChunk(index: number, playlist: Playlist) { return new PlaylistChunk(this).create(index, playlist); }
+    parsePlaylistChunk(chunk: Buffer) { return new PlaylistChunk(this).parse(chunk); }
 
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.TRACK, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous track or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next track or chunk type if last
-        chunk.writeUInt32(ChunkType.TRACK, 0x0C); // Chunk type
-        chunk.writeUTF16(track.name, 80, 0x10); // Track name
-        chunk.writeUInt32(previousIndexAlbum, 0x60); // Previous track related to album or album if first
-        chunk.writeUInt32(nextIndexAlbum, 0x64); // Next track related to album or album if last
-        chunk.writeUInt32(albumIndex, 0x68); // Album
-        chunk.writeUInt32(previousIndexArtist, 0x6C); // Previous track related to artist or artist if first
-        chunk.writeUInt32(nextIndexArtist, 0x70); // Next track related to artist or artist if last
-        chunk.writeUInt32(artistIndex, 0x74); // Artist
-        chunk.writeUInt32(previousIndexGenre, 0x78); // Previous track related to genre or genre if first
-        chunk.writeUInt32(nextIndexGenre, 0x7C); // Next track related to genre or genre if last
-        chunk.writeUInt32(genreIndex, 0x80); // Genre
-        chunk.writeUInt32(playlistEntries.firstIndex, 0x84); // Last playlist entry in track or -1 if none
-        chunk.writeUInt32(playlistEntries.lastIndex, 0x88); // First playlist entry in track or -1 if none
-        chunk.writeUInt32(playlistEntries.length, 0x8C); // Playlist entry count
-        chunk.writeUInt24(track.duration * 2, 0x90); // Track duration multiplied by 2 (channels?)
-        chunk.writeUInt8(5 + this.filterChunks(ChunkType.TRACK, (i: Track, chunk) => i.album === track.album && chunk.data).length * 4, 0x93); // 5 + <track index> * 4 (5, 9, 13, etc. wraps after 255)
-        return chunk;
-    }
+    createHeaderChunk() { return new HeaderChunk(this).create(); }
 
-    createAlbumChunk(index: number, album: Album) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ALBUM, index, ChunkType.ALBUM, this.albumSortOrders);
-        
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.album === album, this.albumTrackSortOrders);
+    createChunkHeaderChunk(index: number, chunkHeader: ChunkHeader) { return new ChunkHeaderChunk(this).create(index, chunkHeader); }
+    parseChunkHeaderChunk(chunk: Buffer) { return new ChunkHeaderChunk(this).parse(chunk); }
 
-        const artistIndex = this.findChunkIndex(album.artist);
-        const genreIndex = this.findChunkIndex(album.genre);
-
-        const { previousIndex: previousIndexArtist, nextIndex: nextIndexArtist } = this.findClosestChunks(ChunkType.ALBUM, index, artistIndex, this.artistAlbumSortOrders, ({ artist }: Album) => artist === album.artist);
-        const { previousIndex: previousIndexGenre, nextIndex: nextIndexGenre } = this.findClosestChunks(ChunkType.ALBUM, index, genreIndex, this.genreAlbumSortOrders, ({ genre }: Album) => genre === album.genre);
-        
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.ALBUM, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous album or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next album or chunk type if last
-        chunk.writeUInt32(ChunkType.ALBUM, 0x0C); // Chunk type
-        chunk.writeUTF16(album.name, 80, 0x10); // Album name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in album
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in album
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(previousIndexArtist, 0x6C); // Previous album related to artist or artist if first
-        chunk.writeUInt32(nextIndexArtist, 0x70); // Next album related to artist or artist if last
-        chunk.writeUInt32(artistIndex, 0x74); // Artist
-        chunk.writeUInt32(previousIndexGenre, 0x78); // Previous album related to genre or genre if first
-        chunk.writeUInt32(nextIndexGenre, 0x7C); // Next album related to genre or genre if last
-        chunk.writeUInt32(genreIndex, 0x80); // Genre
-        // NOTE: there is usually random data 0x88-177 (maybe 0x84-177?) that contains string labels and other stuff, this is also found in the FMIM data of tracks
-        return chunk;
-    }
-
-    createArtistChunk(index: number, artist: Artist) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.ARTIST, index, ChunkType.ARTIST, this.artistSortOrders);
-
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.artist === artist, this.artistTrackSortOrders);
-        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.artist === artist, this.artistAlbumSortOrders);
-
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.ARTIST, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous artist or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next artist displayed or chunk type if last
-        chunk.writeUInt32(ChunkType.ARTIST, 0x0C); // Chunk type
-        chunk.writeUTF16(artist.name, 80, 0x10); // Artist name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in artist
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in artist
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(albums.lastIndex, 0x6C); // Last album in artist
-        chunk.writeUInt32(albums.firstIndex, 0x70); // First album in artist
-        chunk.writeUInt32(albums.length, 0x74); // Album count
-        return chunk;
-    }
-
-    createGenreChunk(index: number, genre: Genre) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.GENRE, index, ChunkType.GENRE, this.genreSortOrders);
-
-        const tracks = this.findChunks(ChunkType.TRACK, (track: Track) => track.genre === genre, this.genreTrackSortOrders);
-        const albums = this.findChunks(ChunkType.ALBUM, (album: Album) => album.genre === genre, this.genreAlbumSortOrders);
-
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.GENRE, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous genre or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next genre or chunk type if last
-        chunk.writeUInt32(ChunkType.GENRE, 0x0C); // Chunk type
-        chunk.writeUTF16(genre.name, 80, 0x10); // Genre name
-        chunk.writeUInt32(tracks.lastIndex, 0x60); // Last track in genre
-        chunk.writeUInt32(tracks.firstIndex, 0x64); // First track in genre
-        chunk.writeUInt32(tracks.length, 0x68); // Track count
-        chunk.writeUInt32(albums.lastIndex, 0x6C); // Last album in genre
-        chunk.writeUInt32(albums.firstIndex, 0x70); // First album in genre
-        chunk.writeUInt32(albums.length, 0x74); // Album count
-        return chunk;
-    }
-
-    createPlaylistChunk(index: number, playlist: Playlist) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.PLAYLIST, index, ChunkType.PLAYLIST, this.playlistSortOrders);
-
-        const playlistEntries = this.findChunks(ChunkType.PLAYLIST_ENTRY, (playlistEntry: PlaylistEntry) => playlistEntry.playlist === playlist);
-
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.PLAYLIST, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Previous playlist or chunk type if first
-        chunk.writeUInt32(nextIndex, 0x08); // Next playlist or chunk type if last
-        chunk.writeUInt32(ChunkType.PLAYLIST, 0x0C); // Chunk type
-        chunk.writeUTF16(playlist.name, 80, 0x10); // Playlist name
-        chunk.writeUInt32(playlistEntries.lastIndex, 0x60); // Last playlist entry in playlist
-        chunk.writeUInt32(playlistEntries.firstIndex, 0x64); // First playlist entry in playlist
-        chunk.writeUInt32(playlistEntries.length, 0x68); // Playlist entry count
-        return chunk;
-    }
-
-    createHeaderChunk() {
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.HEADER, 0x00); // Chunk type
-        chunk.writeUTF8(' IMX', 4, 0x04);
-        chunk.writeUInt32(2, 0x08);
-        chunk.writeUInt32(6, 0x0C);
-        chunk.writeUInt32(1, 0x10);
-        chunk.writeUInt32(6, 0x14);
-        return chunk;
-    }
-
-    createChunkHeaderChunk(index: number, chunkHeader: ChunkHeader) {
-        const { previousIndex, nextIndex } = this.findClosestChunks(ChunkType.CHUNK_HEADER, index, 0);
-        
-        const relatedChunks = this.findChunks(chunkHeader, undefined,
-            // Sort depending on related chunk type
-            chunkHeader === ChunkType.TRACK ? this.trackSortOrders :
-            chunkHeader === ChunkType.ALBUM ? this.albumSortOrders :
-            chunkHeader === ChunkType.ARTIST ? this.artistSortOrders :
-            chunkHeader === ChunkType.GENRE ? this.genreSortOrders :
-            chunkHeader === ChunkType.PLAYLIST ? this.playlistSortOrders :
-            undefined,
-            // Default index depending on related chunk type
-            chunkHeader === ChunkType.PLACEHOLDER ? 1 :
-            chunkHeader === ChunkType.TRACK ? 2 :
-            chunkHeader === ChunkType.ALBUM ? 3 :
-            chunkHeader === ChunkType.ARTIST ? 4 :
-            chunkHeader === ChunkType.GENRE ? 5 :
-            chunkHeader === ChunkType.PLAYLIST ? -1 :
-            undefined
-        );
-
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.CHUNK_HEADER, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndex, 0x04); // Assumed to be previous chunk header or 0 if first
-        chunk.writeUInt32(nextIndex, 0x08); // Assumed to be next chunk header or 0 if last
-        chunk.writeUInt32(relatedChunks.lastIndex, 0x10); // Last related chunk or x if none
-        chunk.writeUInt32(relatedChunks.firstIndex, 0x14); // First related chunk or x if none
-        chunk.writeUInt32(relatedChunks.length, 0x18); // Related chunk count
-        chunk.writeUInt32(chunkHeader, 0x1C); // Assumed to be related chunk type
-        return chunk;
-    }
-
-    createPlaylistEntryChunk(index: number, playlistEntry: PlaylistEntry) {
-        const playlistIndex = this.findChunkIndex(playlistEntry.playlist);
-        const trackIndex = this.findChunkIndex(playlistEntry.track);
-
-        const { previousIndex: previousIndexPlaylist, nextIndex: afterIndexPlaylist } = this.findClosestChunks(ChunkType.PLAYLIST_ENTRY, index, playlistIndex, undefined, ({ playlist }: PlaylistEntry) => playlist === playlistEntry.playlist);
-        const { previousIndex: previousIndexTrack, nextIndex: afterIndexTrack } = this.findClosestChunks(ChunkType.PLAYLIST_ENTRY, index, trackIndex, undefined, ({ track }: PlaylistEntry) => track === playlistEntry.track);
-
-        const chunk = new Buffer(600);
-        chunk.writeUInt32(ChunkType.PLAYLIST_ENTRY, 0x00); // Chunk type
-        chunk.writeUInt32(previousIndexPlaylist, 0x04); // Previous playlist entry related to playlist or playlist if first
-        chunk.writeUInt32(afterIndexPlaylist, 0x08); // Next playlist entry related to playlist or playlist if last
-        chunk.writeUInt32(playlistIndex, 0x0C); // Playlist
-        chunk.writeUInt32(previousIndexTrack, 0x10); // Previous playlist entry related to track or track if first
-        chunk.writeUInt32(afterIndexTrack, 0x14); // Next playlist entry related to track or track if last
-        chunk.writeUInt32(trackIndex, 0x18); // Track
-        return chunk;
-    }
+    createPlaylistEntryChunk(index: number, playlistEntry: PlaylistEntry) { return new PlaylistEntryChunk(this).create(index, playlistEntry); }
+    parsePlaylistEntryChunk(chunk: Buffer) { return new PlaylistEntryChunk(this).parse(chunk); }
 }

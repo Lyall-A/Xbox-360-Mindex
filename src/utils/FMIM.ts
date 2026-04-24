@@ -1,9 +1,8 @@
 import Buffer from './Buffer';
-import NodeBuffer from 'node:buffer';
 import { Track } from './types';
 
 export default class FMIM extends Buffer {
-    constructor(track: Track, wmaBuffer: Buffer | NodeBuffer.Buffer) {
+    constructor(track: Track, wmaBuffer: Uint8Array, trackNum: number = 0) {
         super(FMIM.HEADER_LENGTH + wmaBuffer.length);
 
         this.writeUTF8('FMIM', 4, 0x00);
@@ -18,7 +17,7 @@ export default class FMIM extends Buffer {
         this.writeUTF16(track.genre.name, 512, 0x080C); // Genre
         this.writeUTF16(track.genre.name, 512, 0x0A0C); // Genre
         this.writeUInt32(track.duration, 0x0C0C); // Track length (ms)
-        this.writeUInt32(track.trackNum, 0x0C10); // Track number (starts from 1)
+        this.writeUInt32(trackNum, 0x0C10); // Track number
         // NOTE: there is usually random data 0xC18-D07 (maybe 0xC14-D07?) that contains string labels and other stuff, this is also found in the albums chunk data
 
         this.set(wmaBuffer, FMIM.HEADER_LENGTH); // WMA

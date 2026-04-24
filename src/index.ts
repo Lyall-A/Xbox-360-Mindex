@@ -26,8 +26,23 @@ const mindexInputPath = process.argv[2];
     }[] = (config.manifestOutputPath && fs.existsSync(config.manifestOutputPath)) ? JSON.parse(fs.readFileSync(config.manifestOutputPath, 'utf8')) : [];
 
     const mindex = new Mindex();
+    mindex.setAllTrackSort((a, b) => a.name.localeCompare(b.name)); // sort tracks by name
+    mindex.setAlbumTrackSort((a, b) => {
+        // sort tracks in album view by track num or name
+        const trackA = tracks.find(({ track }) => track === a)!.metadata;
+        const trackB = tracks.find(({ track }) => track === b)!.metadata;
+        if (trackA.trackNum !== undefined && trackB.trackNum !== undefined) {
+            return trackA.trackNum - trackB.trackNum; // sort by track num
+        } else {
+            return a.name.localeCompare(b.name); // fallback to name sort
+        }
+    });
+    mindex.setAllAlbumSort((a, b) => a.name.localeCompare(b.name)); // sort albums by name
+    mindex.setArtistSort((a, b) => a.name.localeCompare(b.name)); // sort artists by name
+    mindex.setGenreSort((a, b) => a.name.localeCompare(b.name)); // sort genres by name
+    mindex.setPlaylistSort((a, b) => a.name.localeCompare(b.name)); // sort playlists by name
 
-    const tracks: Track[] = [];
+    const tracks: { track: Track; metadata: TrackMetadata; }[] = [];
     const albums: Album[] = [];
     const artists: Artist[] = [];
     const genres: Genre[] = [];
@@ -75,8 +90,8 @@ const mindexInputPath = process.argv[2];
         const genre = getGenre(genreName);
 
         console.log(`Creating track '${trackName}'...`);
-        const track = mindex.createTrack(trackName, metadata.length, album, artist, genre, metadata.trackNum);
-        const fmimBuffer = new FMIM(track, fs.readFileSync(wmaPath)); // create FMIM
+        const track = mindex.createTrack(trackName, metadata.length, album, artist, genre);
+        const fmimBuffer = new FMIM(track, fs.readFileSync(wmaPath), metadata.trackNum); // create FMIM
 
         // write FMIM file
         // TODO: maybe the 0000 folder is in case chunk size goes over 65535? either way should probably add a check for this
@@ -84,11 +99,11 @@ const mindexInputPath = process.argv[2];
             path.join(config.mindexOutputPath, 'media', '0000', mindex.findChunkIndex(track).toString(16).padStart(4, '0').toUpperCase()
         ), fmimBuffer);
 
-        tracks.push(track);
+        tracks.push({ track, metadata });
     }
 
     console.log('Writing mindex file...');
-    fs.writeFileSync(path.join(config.mindexOutputPath, 'mindex.xmi'), mindex.buildChunks()); // write mindex.xmi
+    fs.writeFileSync(path.join(config.mindexOutputPath, 'mindex.xmi'), mindex.createChunks()); // write mindex.xmi
 
     if (config.keepTracks) {
         // write manifest
