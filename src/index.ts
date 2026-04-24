@@ -28,10 +28,11 @@ const mindexInputPath = process.argv[2];
     const mindex = new Mindex(mindexInputPath ? fs.readFileSync(mindexInputPath) : undefined);
     mindex.setAllTrackSort((a, b) => a.name.localeCompare(b.name)); // sort tracks by name
     mindex.setAlbumTrackSort((a, b) => {
-        // sort tracks in album view by track num or name
+        // sort tracks in album view by track num
         const trackA = tracks.find(({ track }) => track === a)?.metadata;
         const trackB = tracks.find(({ track }) => track === b)?.metadata;
-        if (trackA?.trackNum !== undefined && trackB?.trackNum !== undefined) {
+        if (!trackA || !trackB) return 0; // TODO: not a track we just made, sort using the original previous/next indexes
+        if (trackA.trackNum !== undefined && trackB.trackNum !== undefined) {
             return trackA.trackNum - trackB.trackNum; // sort by track num
         } else {
             return a.name.localeCompare(b.name); // fallback to name sort
