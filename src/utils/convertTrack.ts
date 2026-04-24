@@ -10,6 +10,7 @@ export type TrackMetadata = {
     length: number;
 };
 
+console.log(process.cwd())
 export default function convertTrack(trackPath: string, wmaPath: string, ffmpegPath = 'ffmpeg'): Promise<TrackMetadata> {
     return new Promise((resolve, reject) => {
         const ffmpegProcess = child_process.spawn(ffmpegPath, [

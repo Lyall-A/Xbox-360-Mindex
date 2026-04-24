@@ -1,7 +1,7 @@
 export type Track = {
     name: string;
     duration: number;
-    trackNum: number;
+    trackNum?: number;
     album: Album;
     artist: Artist;
     genre: Genre;
