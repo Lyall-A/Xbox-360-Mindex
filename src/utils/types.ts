@@ -26,15 +26,17 @@ export type Playlist = {
     name: string;
 };
 
-export type ChunkHeader =
-    | ChunkType.PLACEHOLDER
-    | ChunkType.TRACK
-    | ChunkType.ALBUM
-    | ChunkType.ARTIST
-    | ChunkType.GENRE
-    | ChunkType.PLAYLIST;
+export type ChunkHeader = {
+    type:
+        | ChunkType.PLACEHOLDER
+        | ChunkType.TRACK
+        | ChunkType.ALBUM
+        | ChunkType.ARTIST
+        | ChunkType.GENRE
+        | ChunkType.PLAYLIST;
+};
 
 export type PlaylistEntry = {
     playlist: Playlist;
     track: Track;
-}
+};

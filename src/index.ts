@@ -25,13 +25,13 @@ const mindexInputPath = process.argv[2];
         metadata: TrackMetadata;
     }[] = (config.manifestOutputPath && fs.existsSync(config.manifestOutputPath)) ? JSON.parse(fs.readFileSync(config.manifestOutputPath, 'utf8')) : [];
 
-    const mindex = new Mindex();
+    const mindex = new Mindex(mindexInputPath ? fs.readFileSync(mindexInputPath) : undefined);
     mindex.setAllTrackSort((a, b) => a.name.localeCompare(b.name)); // sort tracks by name
     mindex.setAlbumTrackSort((a, b) => {
         // sort tracks in album view by track num or name
-        const trackA = tracks.find(({ track }) => track === a)!.metadata;
-        const trackB = tracks.find(({ track }) => track === b)!.metadata;
-        if (trackA.trackNum !== undefined && trackB.trackNum !== undefined) {
+        const trackA = tracks.find(({ track }) => track === a)?.metadata;
+        const trackB = tracks.find(({ track }) => track === b)?.metadata;
+        if (trackA?.trackNum !== undefined && trackB?.trackNum !== undefined) {
             return trackA.trackNum - trackB.trackNum; // sort by track num
         } else {
             return a.name.localeCompare(b.name); // fallback to name sort

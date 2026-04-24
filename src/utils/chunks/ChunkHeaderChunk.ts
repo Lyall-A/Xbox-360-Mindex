@@ -8,21 +8,21 @@ export default class ChunkHeaderChunk {
     create(index: number, chunkHeader: ChunkHeader): Buffer {
         const { previousIndex, nextIndex } = this.mindex.findClosestChunks(ChunkType.CHUNK_HEADER, index, 0);
         
-        const relatedChunks = this.mindex.findChunks(chunkHeader, undefined,
+        const relatedChunks = this.mindex.findChunks(chunkHeader.type, undefined,
             // Sort depending on related chunk type
-            chunkHeader === ChunkType.TRACK ? this.mindex.trackSortCompare :
-            chunkHeader === ChunkType.ALBUM ? this.mindex.albumSortCompare :
-            chunkHeader === ChunkType.ARTIST ? this.mindex.artistSortCompare :
-            chunkHeader === ChunkType.GENRE ? this.mindex.genreSortCompare :
-            chunkHeader === ChunkType.PLAYLIST ? this.mindex.playlistSortCompare :
+            chunkHeader.type === ChunkType.TRACK ? this.mindex.trackSortCompare :
+            chunkHeader.type === ChunkType.ALBUM ? this.mindex.albumSortCompare :
+            chunkHeader.type === ChunkType.ARTIST ? this.mindex.artistSortCompare :
+            chunkHeader.type === ChunkType.GENRE ? this.mindex.genreSortCompare :
+            chunkHeader.type === ChunkType.PLAYLIST ? this.mindex.playlistSortCompare :
             undefined,
             // Default index depending on related chunk type
-            chunkHeader === ChunkType.PLACEHOLDER ? 1 :
-            chunkHeader === ChunkType.TRACK ? 2 :
-            chunkHeader === ChunkType.ALBUM ? 3 :
-            chunkHeader === ChunkType.ARTIST ? 4 :
-            chunkHeader === ChunkType.GENRE ? 5 :
-            chunkHeader === ChunkType.PLAYLIST ? -1 :
+            chunkHeader.type === ChunkType.PLACEHOLDER ? 1 :
+            chunkHeader.type === ChunkType.TRACK ? 2 :
+            chunkHeader.type === ChunkType.ALBUM ? 3 :
+            chunkHeader.type === ChunkType.ARTIST ? 4 :
+            chunkHeader.type === ChunkType.GENRE ? 5 :
+            chunkHeader.type === ChunkType.PLAYLIST ? -1 :
             undefined
         );
 
@@ -33,11 +33,13 @@ export default class ChunkHeaderChunk {
         chunk.writeUInt32(relatedChunks.lastIndex, 0x10); // Last related chunk or x if none
         chunk.writeUInt32(relatedChunks.firstIndex, 0x14); // First related chunk or x if none
         chunk.writeUInt32(relatedChunks.length, 0x18); // Related chunk count
-        chunk.writeUInt32(chunkHeader, 0x1C); // Assumed to be related chunk type
+        chunk.writeUInt32(chunkHeader.type, 0x1C); // Assumed to be related chunk type
         return chunk;
     }
 
     parse(chunk: Buffer): ChunkHeader {
-        return chunk.readUInt32(0x1C);
+        return {
+            type: chunk.readUInt32(0x1C)
+        };
     }
 }

@@ -118,9 +118,10 @@ export default class Mindex {
         return;
     }
 
-    createChunkHeader(relatedChunkType: ChunkHeader) {
-        this.addChunk(ChunkType.CHUNK_HEADER, relatedChunkType);
-        return;
+    createChunkHeader(type: ChunkHeader['type']) {
+        const chunkHeader: ChunkHeader = { type };
+        this.addChunk(ChunkType.CHUNK_HEADER, chunkHeader);
+        return chunkHeader;
     }
 
     createPlaylistEntry(track: Track, playlist: Playlist) {
