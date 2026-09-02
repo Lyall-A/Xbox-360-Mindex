@@ -27,7 +27,10 @@
         ".flac",
         ".ogg",
         ".aac",
-        ".opus"
+        ".opus",
+        ".m4a",
+        ".alac",
+        ".ac3"
     ],
     "ffmpegPath": "./ffmpeg"
 }
